@@ -1,0 +1,751 @@
+{
+  "name": "Mein Abschlussprojekt",
+  "nodes": [
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        496,
+        160
+      ],
+      "id": "a6313fb8-7472-4ce6-9686-f6463f8d6297",
+      "name": "Groq Chat Model"
+    },
+    {
+      "parameters": {
+        "formTitle": "IT-Supportanfrage",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "E-Mail-Adresse",
+              "fieldType": "email"
+            },
+            {
+              "fieldLabel": "Betreff"
+            },
+            {
+              "fieldLabel": "Problembeschreibung",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -144,
+        -32
+      ],
+      "id": "cc2b9c42-58eb-4f2c-8d7f-968e036b534b",
+      "name": "IT-Supportanfrage"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "dataSourceId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_NOTION_DATA_SOURCE_ID",
+          "mode": "id"
+        },
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Freigabestatus|select",
+              "condition": "equals",
+              "optionValue": "Freigegeben"
+            },
+            {
+              "key": "Name|title",
+              "condition": "equals",
+              "richTextValue": "={{ $(\"IT-Supportanfrage\").first().json[\"Betreff\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        64,
+        -32
+      ],
+      "id": "5d94b2d4-66ff-4876-8bd1-50e30c01febf",
+      "name": "Freigegebene Wissensbasis abrufen",
+      "alwaysOutputData": true,
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "608e13ec-81a8-480a-9588-b09b4646c99b",
+              "leftValue": "={{$json.property_name}}",
+              "rightValue": "={{$(\"IT-Supportanfrage\").first().json[\"Betreff\"]}}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        256,
+        -32
+      ],
+      "id": "74193ca4-5f54-4064-8549-205c44b45710",
+      "name": "Passende Lösung gefunden?"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Du bist ein KI-Assistent für den internen IT-Support.\n\nFormuliere auf Grundlage der freigegebenen Wissensdatenbank eine kurze und verständliche Antwort für den Benutzer.\n\nAnfrage:\n{{ $(\"IT-Supportanfrage\").first().json[\"Problembeschreibung\"] }}\n\nFreigegebene Lösung:\n{{ $json.property_lösung }}\n\nNutze ausschließlich die angegebene Lösung. Erfinde keine zusätzlichen Informationen. Wenn die Lösung nicht ausreicht, verweise an den First-Level-Support.\nGib die Antwort als einfachen Text ohne Markdown, Sternchen oder andere Formatierungszeichen aus.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        448,
+        -144
+      ],
+      "id": "6d29420a-9c20-45e7-9b3f-014d353df14a",
+      "name": "KI-Antwort erstellen"
+    },
+    {
+      "parameters": {
+        "formFields": {
+          "values": [
+            {
+              "fieldType": "html",
+              "html": "<<h3>Prüfung der KI-Antwort</h3>\n\n<p><strong>Support-Anfrage:</strong><br>\n{{ $(\"IT-Supportanfrage\").first().json[\"Problembeschreibung\"] }}</p>\n\n<p><strong>KI-Antwort:</strong><br>\n{{ $json.output }}</p>\n\n\n"
+            },
+            {
+              "fieldLabel": "Entscheidung",
+              "fieldType": "radio",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Freigeben"
+                  },
+                  {
+                    "option": "Ablehnen"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        768,
+        -128
+      ],
+      "id": "08f137c1-b083-4685-b590-669ef6356473",
+      "name": "Menschliche Freigabe"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "31cc7f01-4344-42c6-8ea9-34610e218a42",
+              "leftValue": "={{ $json.Entscheidung }}",
+              "rightValue": "Freigeben",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        -128
+      ],
+      "id": "10a27570-1ed8-4e8f-8083-865de0ceb68a",
+      "name": "Antwort freigegeben?"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Antwort freigegeben",
+        "completionMessage": "={{ $('KI-Antwort erstellen').item.json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1216,
+        -288
+      ],
+      "id": "7aaf5dae-ddb4-4e2e-80c0-3805c3534cbc",
+      "name": "Freigegebene Antwort anzeigen"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Keine passende Lösung gefunden",
+        "completionMessage": "Zu deiner Anfrage wurde keine passende freigegebene Lösung in der Wissensdatenbank gefunden. Die Anfrage wird an den First-Level-Support weitergeleitet.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1216,
+        192
+      ],
+      "id": "9d17a5b1-a9d2-4733-bb76-cee63e2ecbfb",
+      "name": "Kein Treffer – First-Level-Support"
+    },
+    {
+      "parameters": {
+        "content": "Supportanfrage erfassen",
+        "height": 720,
+        "width": 192,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -192,
+        -352
+      ],
+      "id": "34bcbd95-12d5-4a2f-8b1d-94d711aef8ce",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": " Freigegebene Wissensbasis prüfen",
+        "height": 704,
+        "width": 368,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        16,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "9e12f9e8-ce8d-44eb-a873-49b22d9cb07f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": " KI-Antwort erstellen",
+        "height": 720,
+        "width": 304,
+        "color": "#6F1F93"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        400,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "d71a15e8-2e44-4e34-bdcb-e4753622eea2",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Menschliche Prüfung und Freigabe",
+        "height": 720,
+        "width": 400,
+        "color": "#D46911"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        720,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "6d0e3054-ede0-488d-9f3f-ee7ddd60a25e",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "Ausgabe oder Eskalation",
+        "height": 720,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1152,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "01f36fd8-249a-4802-9868-8494ca6ffebf",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Ergebnis First-Level-Prüfung",
+              "fieldType": "radio",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Problem gelöst"
+                  },
+                  {
+                    "option": "An Second Level eskalieren"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1440,
+        -112
+      ],
+      "id": "d6b18d19-e647-4b25-8914-67ff83b22ca0",
+      "name": "First-Level-Prüfung"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d2a88c48-1e84-4fdc-8a5e-53dc50ba61b7",
+              "leftValue": "={{ $json[\"Ergebnis First-Level-Prüfung\"] }}",
+              "rightValue": "Problem gelöst",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1600,
+        -112
+      ],
+      "id": "b1d0dc91-1376-46af-a101-240f9b709d32",
+      "name": "First Level gelöst?"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Problem gelöst",
+        "completionMessage": "Die Anfrage wurde durch den First-Level-Support erfolgreich bearbeitet. Eine Eskalation an den Second-Level-Support ist nicht erforderlich.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1744,
+        -288
+      ],
+      "id": "76c50b26-ae67-4d6b-980c-455e386d761c",
+      "name": "First Level - Problem gelöst"
+    },
+    {
+      "parameters": {
+        "formFields": {
+          "values": [
+            {
+              "fieldType": "html",
+              "html": "<<h3>Eskalation an Second-Level-Support</h3>\n\n<p><strong>Ursprüngliche Anfrage:</strong><br>\n{{ $(\"IT-Supportanfrage\").first().json[\"Problembeschreibung\"] }}</p>\n\n<p><strong>Betreff:</strong><br>\n{{ $(\"IT-Supportanfrage\").first().json[\"Betreff\"] }}</p>\n\n<p><strong>Bisheriger Bearbeitungsweg:</strong><br>\nKI-Antwort wurde erstellt und menschlich geprüft.<br>\nDie KI-Antwort wurde nicht freigegeben.<br>\nDer First-Level-Support konnte die Anfrage nicht abschließend lösen.</p>\n\n\n"
+            },
+            {
+              "fieldLabel": "Lösung Second Level",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "Lösung für Wissensdatenbank freigeben?",
+              "fieldType": "radio",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Ja"
+                  },
+                  {
+                    "option": "Nein"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Kategorie",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Passwort-Selbsthilfe"
+                  },
+                  {
+                    "option": "M365"
+                  },
+                  {
+                    "option": "Drucker/Scanner"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1728,
+        96
+      ],
+      "id": "f4f3d074-3411-404d-95db-caa79b17e322",
+      "name": "Second-Level-Bearbeitung"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "={{ $(\"Second-Level-Bearbeitung\").first().json[\"Lösung Second Level\"] }}",
+        "completionMessage": "=Die Anfrage wurde an den Second-Level-Support eskaliert und bearbeitet.\n\nLösung:\n{{ $json[\"Lösung Second Level\"] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        2096,
+        128
+      ],
+      "id": "5a4e10f2-98e1-4f37-89df-855dbe715337",
+      "name": "Second Level – Lösung erstellt"
+    },
+    {
+      "parameters": {
+        "content": "First- und Second-Level-Support",
+        "height": 720,
+        "width": 880,
+        "color": "#185427"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1424,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "18850665-5b26-43bf-9083-84c96255d3f8",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "sendTo": "first-level@example.com",
+        "subject": "IT-Support – Kein passender Wissenseintrag gefunden",
+        "message": "=<h3>Neue IT-Supportanfrage – kein Wissensdatenbank-Treffer</h3>  <p><strong>E-Mail-Adresse:</strong><br> {{ $(\"IT-Supportanfrage\").first().json[\"E-Mail-Adresse\"] }}</p>  <p><strong>Betreff:</strong><br> {{ $(\"IT-Supportanfrage\").first().json[\"Betreff\"] }}</p>  <p><strong>Problembeschreibung:</strong><br> {{ $(\"IT-Supportanfrage\").first().json[\"Problembeschreibung\"] }}</p>  <p><strong>Status:</strong><br> Keine passende freigegebene Lösung in der Wissensdatenbank gefunden.</p>  <p>Bitte durch den First-Level-Support prüfen.</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        112
+      ],
+      "id": "a6a0809d-7254-4a2d-bba6-35f105122bbf",
+      "name": "Strukturierte Anfrage an First Level senden"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9b2769a4-b36f-4138-872b-c3def17d98c9",
+              "leftValue": "={{ $json[\"Lösung für Wissensdatenbank freigeben?\"] }}",
+              "rightValue": "Ja",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1872,
+        -80
+      ],
+      "id": "f5a8f8ed-8370-45e3-a6f7-8e205df60a02",
+      "name": "Lösung für Wissensdatenbank freigegeben?"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "dataSourceId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_NOTION_DATA_SOURCE_ID",
+          "mode": "id"
+        },
+        "title": "={{ $(\"IT-Supportanfrage\").first().json[\"Betreff\"] }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Lösung|rich_text",
+              "textContent": "={{ $(\"Second-Level-Bearbeitung\").first().json[\"Lösung Second Level\"] }}"
+            },
+            {
+              "key": "Freigabestatus|select",
+              "selectValue": "Freigegeben"
+            },
+            {
+              "key": "Kategorie|select",
+              "selectValue": "={{ $(\"Second-Level-Bearbeitung\").first().json[\"Kategorie\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        2064,
+        -208
+      ],
+      "id": "64220dc4-cbb0-4a04-9b63-0fa2c43b80e7",
+      "name": "Freigegebene Lösung in Wissensdatenbank speichern"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "KI-Antwort erstellen",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IT-Supportanfrage": {
+      "main": [
+        [
+          {
+            "node": "Freigegebene Wissensbasis abrufen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Freigegebene Wissensbasis abrufen": {
+      "main": [
+        [
+          {
+            "node": "Passende Lösung gefunden?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Passende Lösung gefunden?": {
+      "main": [
+        [
+          {
+            "node": "KI-Antwort erstellen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Strukturierte Anfrage an First Level senden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KI-Antwort erstellen": {
+      "main": [
+        [
+          {
+            "node": "Menschliche Freigabe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Menschliche Freigabe": {
+      "main": [
+        [
+          {
+            "node": "Antwort freigegeben?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Antwort freigegeben?": {
+      "main": [
+        [
+          {
+            "node": "Freigegebene Antwort anzeigen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "First-Level-Prüfung",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "First-Level-Prüfung": {
+      "main": [
+        [
+          {
+            "node": "First Level gelöst?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "First Level gelöst?": {
+      "main": [
+        [
+          {
+            "node": "First Level - Problem gelöst",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Second-Level-Bearbeitung",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Second-Level-Bearbeitung": {
+      "main": [
+        [
+          {
+            "node": "Lösung für Wissensdatenbank freigegeben?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Strukturierte Anfrage an First Level senden": {
+      "main": [
+        [
+          {
+            "node": "First-Level-Prüfung",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lösung für Wissensdatenbank freigegeben?": {
+      "main": [
+        [
+          {
+            "node": "Freigegebene Lösung in Wissensdatenbank speichern",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Second Level – Lösung erstellt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Freigegebene Lösung in Wissensdatenbank speichern": {
+      "main": [
+        [
+          {
+            "node": "Second Level – Lösung erstellt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
