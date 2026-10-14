@@ -90,3 +90,10 @@ Protokollierung und technische Fehlerbehandlung erforderlich.
 **Kontext:** Weiterbildung zum KI-Integrationsmanager
 
 **Unternehmen:** Bergmann Industriekomponenten GmbH (fiktiv)
+
+## 🖼️ n8n-Workflow – Michi's SmartDesk
+
+Der folgende Screenshot zeigt den Aufbau meines
+KI-gestützten IT-Support-Assistenten in n8n.
+
+![Michi's SmartDesk – n8n-Workflow](n8n_Mein_Abschlussprojekt.png)
